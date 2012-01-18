@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
-
+<head>
+  <title>Tube Cubes!!!</title>
+</head>
 <body>
 </body>
 <script src="three.js/build/Three.js"></script>
@@ -34,21 +36,33 @@ setInterval( function () {
 </script>
 
 <script>
-  var camera, scene, renderer, controls, clock, plane, light;
+  var camera, scene, renderer, controls, clock, plane, light, json, level, walls;
   
-  var json =$.ajax({
-      type: "GET",
-      url: "level01.json",
-      success: function(results){
-          alert("Success!");
-      },
-      error: function(XMLHttpRequest, textStatus, errorThrown){
-          alert("Error: " + textStatus);
-      }
-  });
+  load();
   
-  init();
-  animate();
+  function load(){
+    $.ajax({
+        type: "GET",
+        url: "level01.json",
+        success: function(results){
+            alert("SUCCESS!");
+            json = results;
+            
+            var levelInfo = $.parseJSON(json);
+
+            if(levelInfo != null)
+              walls = levelInfo.walls;
+              
+            init();
+            animate();
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown){
+            alert("Error: Could not load the level");
+        }
+    });
+  
+    
+  }
   
   function init(){
     clock = new THREE.Clock();
@@ -72,9 +86,9 @@ setInterval( function () {
     
     planes = []
     
-    var level = loadLevel(lvl_array);
+    level = loadLevel(walls);
     
-    alert("There is " + level.length + " walls in the level.");
+    alert("There are " + level.length + " walls in the level.");
     
     for(var i = 0; i < level.length; i++){
               scene.add(level[i]);
