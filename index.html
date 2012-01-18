@@ -4,18 +4,48 @@
 <body>
 </body>
 <script src="three.js/build/Three.js"></script>
-<script>
-  PLANE_SIZE = 400
+<script src="stats.js/build/Stats.js"></script>
+<script src='jquery.js'></script>
 
-  var lvl_array = [  ['o','o','o','o'],
-                     ['o','o','o','o'],
-                     ['o','o','o','o'],
-                     ['o','o','o','o']
+<script>
+  PLANE_SIZE = 600
+
+  var lvl_array = [  ['o','o','o','o','o','o','o','o'],
+                     ['o','o','o','o','o','o','o','o'],
+                     ['o','o','o','o','o','o','o','o'],
+                     ['o','o','o','x','x','o','o','o'],
+                     ['o','o','o','x','x','o','o','o'],
+                     ['o','o','o','o','o','o','o','o'],
+                     ['o','o','o','o','o','o','o','o'],
+                     ['o','o','o','o','o','o','o','o']
                   ];
+                  
+var stats = new Stats();
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.left = '0px';
+stats.domElement.style.top = '0px';
+
+document.body.appendChild( stats.domElement );
+setInterval( function () {
+
+    stats.update();
+
+}, 1000 / 60 );
 </script>
 
 <script>
-  var camera, scene, renderer, controls, clock, plane;
+  var camera, scene, renderer, controls, clock, plane, light;
+  
+  var json =$.ajax({
+      type: "GET",
+      url: "level01.json",
+      success: function(results){
+          alert("Success!");
+      },
+      error: function(XMLHttpRequest, textStatus, errorThrown){
+          alert("Error: " + textStatus);
+      }
+  });
   
   init();
   animate();
@@ -23,11 +53,13 @@
   function init(){
     clock = new THREE.Clock();
     scene = new THREE.Scene();
+    light = new THREE.PointLight(0xFFFFFF);
     
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
     camera.position.z = 1000;
     scene.add(camera);
     
+    light.position = camera.position;
     controls = new THREE.FirstPersonControls( camera );
   
     controls.movementSpeed = 1000;
@@ -42,41 +74,25 @@
     
     var level = loadLevel(lvl_array);
     
-    //Ceiling
-    for(var i = 0; i < 10; i++){
-      plane = getSquarePlane(PLANE_SIZE);
-      plane.position = new THREE.Vector3(i * PLANE_SIZE, PLANE_SIZE / 2, PLANE_SIZE / 2);
-      plane.rotation.x = 90 * (Math.PI / 180);
-      scene.add(plane);
-    }
-    //Back
-    for(var i = 0; i < 10; i++){
-      plane = getSquarePlane(PLANE_SIZE);
-      plane.position = new THREE.Vector3(i * PLANE_SIZE, 0, 0);
-      scene.add(plane);
-    }
-    //Floor
-    for(var i = 0; i < 10; i++){
-      plane = getSquarePlane(PLANE_SIZE);
-      plane.position = new THREE.Vector3(i * PLANE_SIZE, 0, PLANE_SIZE);
-      plane.rotation.y = -180 * (Math.PI / 180);
-      scene.add(plane);
-    }
-    //Front
-    for(var i = 0; i < 10; i++){
-      plane = getSquarePlane(PLANE_SIZE);
-      plane.position = new THREE.Vector3(i * PLANE_SIZE, -PLANE_SIZE/2, PLANE_SIZE/2);
-      plane.rotation.x = -90 * (Math.PI / 180);
-      scene.add(plane);
+    alert("There is " + level.length + " walls in the level.");
+    
+    for(var i = 0; i < level.length; i++){
+              scene.add(level[i]);
     }
     
-    renderer = new THREE.CanvasRenderer();
+    scene.add(light);
+    
+    renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
   }
   
+  //TODO: Make the quads align to their respective positions
   function loadLevel(level_array){
     var walls = [];
+    var wall_color = 0xFFFFFF;
+    var floor_color = 0xFFFFFF;
+    var ceil_color = 0xFFFFFF;
     
     if(verifyLevel(level_array)){
       lvlLen = level_array[0].length;
@@ -88,44 +104,47 @@
           //Cases where the left wall exists
           if((x == 0 && level_array[y][x] == 'o') ||
              (x > 0 && level_array[y][x] == 'o' && level_array[y][x-1] == 'x')){
-             plane = getSquarePlane(PLANE_SIZE);
-             plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-             walls.push(plane);
+              plane = getSquarePlane(PLANE_SIZE, wall_color );
+              plane.rotation.y = 90 * (Math.PI / 180);
+              plane.position = new THREE.Vector3(x * PLANE_SIZE - PLANE_SIZE / 2, 0, y * PLANE_SIZE + PLANE_SIZE / 2);
+              walls.push(plane);
              }
           //Cases where the top wall exists
           if((y == 0 && level_array[y][x] == 'o') ||
              (y > 0 && level_array[y][x] == 'o' && level_array[y-1][x] == 'x')){
-              plane = getSquarePlane(PLANE_SIZE);
-              plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-              walls.push(plane);
+               plane = getSquarePlane(PLANE_SIZE, wall_color );
+               plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, y * PLANE_SIZE);
+               walls.push(plane);
              }
           //Cases where the right wall exists
           if((x == lvlLen - 1 && level_array[y][x] == 'o') || 
               (x < lvlLen - 1 && level_array[y][x] == 'o' && level_array[y][x+1] == 'x')){
-               plane = getSquarePlane(PLANE_SIZE);
-               plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-               walls.push(plane);
-              }
+                plane = getSquarePlane(PLANE_SIZE, wall_color );
+                plane.rotation.y = -90 * (Math.PI / 180);
+                plane.position = new THREE.Vector3(x * PLANE_SIZE + PLANE_SIZE / 2, 0, y * PLANE_SIZE + PLANE_SIZE / 2);
+                walls.push(plane);
+             }
           //Cases where the bottom wall exists
           if((y == lvlHgt - 1 && level_array[y][x] == 'o') || 
             (y < lvlHgt - 1 && level_array[y][x] == 'o' && level_array[y+1][x] == 'x')){
-             plane = getSquarePlane(PLANE_SIZE);
-             plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-             walls.push(plane);
+              plane = getSquarePlane(PLANE_SIZE, wall_color );
+              plane.rotation.y = 180 * (Math.PI / 180);
+              plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, y * PLANE_SIZE + PLANE_SIZE);
+              walls.push(plane);
             }
           //Create the ceiling and floor
           if(level_array[y][x] == 'o'){
             
             //Ceiling
-            plane = getSquarePlane(PLANE_SIZE);
-            plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-            plane.rotation.y = 180 * (Math.PI / 180);
+            plane = getSquarePlane(PLANE_SIZE, ceil_color );
+            plane.position = new THREE.Vector3(x * PLANE_SIZE, PLANE_SIZE / 2, y * PLANE_SIZE + PLANE_SIZE / 2);
+            plane.rotation.x = 90 * (Math.PI / 180);
             walls.push(plane);
             
             //Floor
-            plane = getSquarePlane(PLANE_SIZE);
-            plane.position = new THREE.Vector3(x * PLANE_SIZE, 0, 0);
-            plane.rotation.y = -180 * (Math.PI / 180);
+            plane = getSquarePlane(PLANE_SIZE, floor_color );
+            plane.position = new THREE.Vector3(x * PLANE_SIZE, -PLANE_SIZE / 2, y * PLANE_SIZE + PLANE_SIZE / 2);
+            plane.rotation.x = -90 * (Math.PI / 180);
             walls.push(plane);
           }
         }
@@ -137,13 +156,14 @@
     return walls;
   }
   
-  function getSquarePlane(plane_size){
+  function getSquarePlane(plane_size, color){
     plane = new THREE.Mesh(
                                  new THREE.PlaneGeometry( plane_size, plane_size ), 
-                                 new THREE.MeshBasicMaterial( { color: 0x000 } )
+                                 new THREE.MeshLambertMaterial( { color: color } )
                            );
     return plane;
   }
+   
   function verifyLevel(level_array){
     if(level_array.length > 0){
       length = level_array[0].length;
